@@ -5,8 +5,8 @@ require "getoptlong"
 $conf = {}
 
 # http://stackoverflow.com/questions/5661466/test-if-string-is-a-number-in-ruby-on-rails
-def is_number?(value)
-    true if Float(value) rescue false
+def is_int?(value)
+  return value =~ /^[0-9]+$/
 end
 
 def fatal_error(message)
@@ -28,7 +28,7 @@ def parse_options()
     when '--command', 'c'
       $conf[:command] = opt
     when '--exit-code'
-      unless is_number? opt
+      unless is_int? opt
         fatal_error "Invalid exit code."
       end
       $conf[:exit_code] = opt.to_i
@@ -70,6 +70,8 @@ def run()
     fatal_error "Can't access lockfile directory: \"#{$conf[:lock]}\""
   rescue Errno::EACCES
     fatal_error "Incorrect permissions to modify lockfile: \"#{$conf[:lock]}\""
+  rescue Errno::EISDIR
+    fatal_error "Lockfile must be a file not a directory."
   end
 
   exit $conf[:exit_code]
