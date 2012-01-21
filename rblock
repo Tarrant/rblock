@@ -37,15 +37,28 @@ def fatal_error(message)
   exit 1
 end
 
+def usage
+  puts <<-EOF
+#{$0} [options] lockfile command ...
+  [ -f | --lock <lockfile>   ]:  Specifiy lockfile.
+  [ -c | --command <command> ]:  Specifiy command.
+  [ --exit-code <exit-code>  ]:  Exit code on lock failure.
+EOF
+end
+
 def parse_options()
   opts = GetoptLong.new(
       ["--lock",  "-f", GetoptLong::OPTIONAL_ARGUMENT],
       ["--command", "-c", GetoptLong::OPTIONAL_ARGUMENT],
-      ["--exit-code", GetoptLong::OPTIONAL_ARGUMENT]
+      ["--exit-code", GetoptLong::OPTIONAL_ARGUMENT],
+      ["--help", "-h", GetoptLong::NO_ARGUMENT]
   )
 
   opts.each do |arg, opt|
     case arg
+    when '--help', '-h'
+      usage()
+      exit 0
     when'--lock', '-f'
       $conf[:lock] = opt
     when '--command', 'c'
