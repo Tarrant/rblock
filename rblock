@@ -9,6 +9,11 @@ def is_number?(value)
     true if Float(value) rescue false
 end
 
+def fatal_error(message)
+  STDERR.puts message
+  exit 1
+end
+
 def parse_options()
   opts = GetoptLong.new(
       ["--lock",  "-f", GetoptLong::OPTIONAL_ARGUMENT],
@@ -24,8 +29,7 @@ def parse_options()
       $conf[:command] = opt
     when '--exit-code'
       unless is_number? opt
-        STDERR.puts "Invalid exit code."
-        exit 1
+        fatal_error "Invalid exit code."
       end
       $conf[:exit_code] = opt.to_i
     end
@@ -39,29 +43,36 @@ def parse_options()
   end
 
   unless $conf[:command]
-    STDERR.puts "Must specifiy a command to run."
-    exit 1
+    fatal_error "Must specifiy a command to run."
   end
 
   unless $conf[:lock]
-    STDERR.puts "Must specifiy a lock file."
-    exit 1
+    fatal_error "Must specifiy a lock file."
   end
 end
 
 def run()
   parse_options()
 
-  File.open($conf[:lock], File::RDWR|File::CREAT, 0644) do |f|
-    f.flock(File::LOCK_EX | File::LOCK_NB) or (
-      exit_code = ($conf[:exit_code] or 5)
-      exit exit_code
-    )
+  begin
+    File.open($conf[:lock], File::RDWR|File::CREAT, 0644) do |f|
+      f.flock(File::LOCK_EX | File::LOCK_NB) or (
+        exit_code = ($conf[:exit_code] or 5)
+        exit exit_code
+      )
 
-    system($conf[:command])
+      system($conf[:command])
+      $conf[:exit_code] = $?.exitstatus
 
-    f.flock(File::LOCK_UN)
+      f.flock(File::LOCK_UN)
+    end
+  rescue Errno::ENOENT
+    fatal_error "Can't access lockfile directory: \"#{$conf[:lock]}\""
+  rescue Errno::EACCES
+    fatal_error "Incorrect permissions to modify lockfile: \"#{$conf[:lock]}\""
   end
+
+  exit $conf[:exit_code]
 end
 
 if __FILE__ == $0
